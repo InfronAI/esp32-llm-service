@@ -1,0 +1,6 @@
+esptool==5.6.0
+mpremote==1.29.0
+ar==1.0.1
+pyelftools==0.33
+openai==3.35.1
+httpx2==2.16.0

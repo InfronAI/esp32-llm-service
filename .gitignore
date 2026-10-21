@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+backups/
+firmware/*.bin
+device/settings.json
+reports/
+third_party/
+native/build-*/
+native/.mpy_ld_cache-*/
+models/*.bin
+native/*.mpy
+.DS_Store
+.env
+.env.*
+!.env.example
+dist/

@@ -1,0 +1,9 @@
+{
+  "version": "1.29.0",
+  "board": "ESP32_GENERIC_S3-SPIRAM_OCT",
+  "filename": "ESP32_GENERIC_S3-SPIRAM_OCT-20260824-v1.29.0.bin",
+  "url": "https://micropython.org/resources/firmware/ESP32_GENERIC_S3-SPIRAM_OCT-20260824-v1.29.0.bin",
+  "sha256": "ab24eadfe3ef0e6ee38834d730e648def7cd82f3fa51ee0bbc59c29a6e1bd176",
+  "flash_offset": "0x0",
+  "micropython_commit": "0fd6c573ea815774668bbb16b8e197c8822368b2"
+}

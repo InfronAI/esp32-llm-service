@@ -1,0 +1,18 @@
+{
+  "model": "tinystories-260k",
+  "parameters": 260032,
+  "format": "llama2.c fp32 v0",
+  "source": "https://github.com/doryiii/esp32-llm",
+  "source_commit": "c6c647f7bfbb74efd2bbfd9a1725da4a903589f4",
+  "context_length": 512,
+  "weights_and_tokenizer": {
+    "tok512.bin": {
+      "bytes": 6227,
+      "sha256": "037cb335abb25d1fa9e8ecae30ed2a3a8ace9302862ebcdc05d51a6bbb10c312"
+    },
+    "stories260K.bin": {
+      "bytes": 1056540,
+      "sha256": "b0a507e7ad0f626624f17112325e66691f9076d622e1d3274d103d00299f2696"
+    }
+  }
+}

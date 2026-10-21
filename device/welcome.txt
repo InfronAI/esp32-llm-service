@@ -1,0 +1,12 @@
+Welcome to ESP32 Shell!
+
+Try: help, ls -l, pwd, free, df, uname, ifconfig
+
+Your files live in /home and survive a reboot.
+Example:
+  echo "hello ESP32" > hello.txt
+  cat hello.txt
+  python -c "print(2 + 3)"
+
+This is MicroPython, not Linux. No bash, apt, native Linux binaries,
+pipes, background jobs or Unix user permissions.

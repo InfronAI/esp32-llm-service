@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.py text
+*.c text
+*.h text
+*.md text
+*.sh text
+*.command text
+tests/reference_run.c whitespace=-blank-at-eof
