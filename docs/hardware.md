@@ -6,22 +6,18 @@
 
 The minimal setup is **one ESP32-S3 board with 16 MB Flash and 8 MB Octal PSRAM, one USB data cable, and your existing Mac**. Use an existing 2.4 GHz Wi-Fi network for LAN access; the installed board also provides a direct AP. Inference needs no display, microphone, SD card, breadboard, jumper wires, soldering, or host GPU.
 
-The original board's ESP32-S3 rev 0.2, Flash capacity, and PSRAM configuration were verified. Its retail brand and exact PCB model were not recorded. The shopping examples below match the required specifications; they are not claims that these specific retail units were tested here.
-
 ## Shopping list
-
-Catalog information checked on **2026-10-21**. Prices, shipping, and stock depend on the seller and checkout region. Links are manufacturer or distributor pages, without affiliate tracking.
 
 | Item | Quantity / necessity | Specification or example model | Where to obtain it |
 | --- | --- | --- | --- |
 | ESP32-S3 development board | 1, required | **Waveshare ESP32-S3-DEV-KIT-N16R8**, SKU **28409**; or **N16R8-M**, SKU **28836**, with soldered headers. Both use `ESP32-S3-WROOM-1-N16R8`. Choose the onboard-antenna version. | [Waveshare international store](https://www.waveshare.com/product/mcu-tools/esp32-s3-dev-kit-n8r8.htm), explicitly select **1-N16R8**; [China store listing](https://dd.waveshare.net/shop/ESP32-S3-DEV-KIT-N16R8.htm); [manufacturer specifications/SKUs](https://docs.waveshare.net/ESP32-S3-DEV-KIT-N8R8/) |
 | USB data cable | 1, required | USB 2.0 data capability; host connector must fit the Mac, board connector must fit the chosen board. The Waveshare example uses USB-C. A USB-C to USB-C cable is convenient on a USB-C Mac. | Reuse a known data cable or buy a cable explicitly sold for data/sync. A documented example is [Apple 60W USB-C Charge Cable, 1 m](https://www.apple.com/shop/product/MW493AM/A/60w-usb-c-charge-cable-1-m); Apple specifies USB 2 data transfer. The 60W rating is not required by this project. |
-| Mac | 1, required for this tutorial | Existing Apple Silicon Mac with macOS, Internet access for downloads, and USB access | Use the existing computer; a new Mac or GPU is unnecessary for model inference. Other hosts are outside this tutorial's verified USB setup. |
+| Mac | 1, required for this tutorial | Existing Apple Silicon Mac with macOS, Internet access for downloads, and USB access | Use the existing computer; a new Mac or GPU is unnecessary for model inference. |
 | Wi-Fi router / AP | 1 existing network for LAN mode | 2.4 GHz, ordinary WPA2 password authentication, clients allowed to communicate | Use an existing home/office router. No specific brand is required. After installation, direct ESP32 AP access also works without a router. |
-| USB power adapter | Optional, 1 for use without the Mac | Regulated 5 V USB supply; a 1 A or greater rated adapter is a practical choice for the bare board. Match its connector/cable and the board maker's power specification. | Reuse a suitable phone USB supply. During development the Mac USB connection supplies power. The project's actual peak current has not been measured. |
+| USB power adapter | Optional, 1 for use without the Mac | Regulated 5 V USB supply; a 1 A or greater rated adapter is a practical choice for the bare board. Match its connector/cable and the board maker's power specification. | Reuse a suitable phone USB supply. During development the Mac USB connection supplies power. |
 | USB adapter / hub | Optional, only if connectors require it | Must pass USB data and power; USB-C-to-A adapter if using an A-to-C cable with a USB-C-only Mac | Reuse an existing data adapter. A direct cable is simpler for initial troubleshooting. |
 
-For an Espressif-branded alternative, the distributor lists [ESP32-S3-DevKitC-1-N16R8](https://www.mouser.com/en/ProductDetail/Espressif-Systems/ESP32-S3-DevKitC-1-N16R8?qs=LnCj936TGbUBJEUUxFQ%252B%252BQ%3D%3D). Check the exact module, minimum order quantity, stock, and connector before ordering. The [Espressif development-board catalog](https://www.espressif.com/en/products/devkits/esp32-s3-series/esp32-s3-devkitc-1) offers several memory variants; its default selection may differ from this tutorial.
+For an Espressif-branded alternative, the distributor lists [ESP32-S3-DevKitC-1-N16R8](https://www.mouser.com/en/ProductDetail/Espressif-Systems/ESP32-S3-DevKitC-1-N16R8?qs=LnCj936TGbUBJEUUxFQ%252B%252BQ%3D%3D). The [Espressif development-board catalog](https://www.espressif.com/en/products/devkits/esp32-s3-series/esp32-s3-devkitc-1) offers several memory variants; its default selection may differ from this tutorial.
 
 ## Select the correct variant
 

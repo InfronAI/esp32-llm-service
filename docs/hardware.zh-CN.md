@@ -6,22 +6,18 @@
 
 最小配置是 **1 块 16 MB Flash / 8 MB Octal PSRAM 的 ESP32-S3 开发板、1 根 USB 数据线，以及现有 Mac**。局域网调用使用已有的 2.4 GHz Wi-Fi；安装后也能直连板子热点。推理无需屏幕、麦克风、SD 卡、面包板、杜邦线、焊接或主机 GPU。
 
-原设备已验证 ESP32-S3 rev 0.2、Flash 容量和 PSRAM 配置，但未记录零售品牌及准确 PCB 型号。下方采购示例符合所需规格，不代表这些具体零售板已经在本项目中逐一实测。
-
 ## 采购清单
-
-产品目录核对日期：**2026-10-21**。价格、运费和库存以购买地区及结算页为准。链接为厂商或分销商页面，不含推广追踪参数。
 
 | 物品 | 数量 / 是否必需 | 规格或参考型号 | 获取 / 购买方式 |
 | --- | --- | --- | --- |
 | ESP32-S3 开发板 | 1 块，必需 | **微雪 ESP32-S3-DEV-KIT-N16R8**，SKU **28409**；或已焊排针的 **N16R8-M**，SKU **28836**。均搭载 `ESP32-S3-WROOM-1-N16R8`，选择板载天线版。 | [微雪国际商城](https://www.waveshare.com/product/mcu-tools/esp32-s3-dev-kit-n8r8.htm)，明确选择 **1-N16R8**；[中文商城型号页](https://dd.waveshare.net/shop/ESP32-S3-DEV-KIT-N16R8.htm)；[厂商规格及 SKU](https://docs.waveshare.net/ESP32-S3-DEV-KIT-N8R8/) |
 | USB 数据线 | 1 根，必需 | 支持 USB 2.0 数据；两端分别匹配 Mac 和开发板。上述微雪板为 USB-C，USB-C Mac 可用 C-to-C 线。 | 优先使用已知能传数据的现有线，购买时选“数据/同步”线。可参考 [Apple 60W USB-C 充电线 1 米](https://www.apple.com/shop/product/MW493AM/A/60w-usb-c-charge-cable-1-m)，官方注明支持 USB 2 数据传输；本项目并不要求 60W 规格。 |
-| Mac | 1 台，本教程必需 | 现有 Apple Silicon Mac、macOS、可下载依赖的网络及 USB 接口 | 使用现有电脑即可，无需为模型推理购买新 Mac 或 GPU；其他主机不在本教程已验证 USB 环境范围内。 |
+| Mac | 1 台，本教程必需 | 现有 Apple Silicon Mac、macOS、可下载依赖的网络及 USB 接口 | 使用现有电脑即可，无需为模型推理购买新 Mac 或 GPU。 |
 | Wi-Fi 路由器 / 热点 | LAN 模式需要 1 个现有网络 | 2.4 GHz、普通 WPA2 密码认证、允许客户端互访 | 使用家用或办公路由器，无固定品牌要求；安装后使用 ESP32 自建热点也可不依赖路由器。 |
-| USB 电源适配器 | 可选，脱离 Mac 运行时 1 个 | 稳定 5 V USB 供电；裸板可选择额定 1 A 或更高的适配器，接口和线材匹配，并遵循板厂供电要求 | 优先复用合适的手机 USB 电源；开发期间 Mac USB 即可供电。本项目未测量实际峰值电流。 |
+| USB 电源适配器 | 可选，脱离 Mac 运行时 1 个 | 稳定 5 V USB 供电；裸板可选择额定 1 A 或更高的适配器，接口和线材匹配，并遵循板厂供电要求 | 优先复用合适的手机 USB 电源；开发期间 Mac USB 即可供电。 |
 | USB 转接头 / Hub | 可选，接口不匹配时使用 | 同时支持数据和供电；例如 USB-C Mac 搭配 A-to-C 线时使用 C-to-A 转接头 | 优先复用已有数据转接头；首次排障时直接接线更简单。 |
 
-如需乐鑫品牌，可参考分销商的 [ESP32-S3-DevKitC-1-N16R8](https://www.mouser.com/en/ProductDetail/Espressif-Systems/ESP32-S3-DevKitC-1-N16R8?qs=LnCj936TGbUBJEUUxFQ%252B%252BQ%3D%3D)。下单前核对模组、最小起订量、库存和接口。[乐鑫开发板目录](https://www.espressif.com/en/products/devkits/esp32-s3-series/esp32-s3-devkitc-1)有多种存储配置，默认选项可能与本教程不同。
+如需乐鑫品牌，可参考分销商的 [ESP32-S3-DevKitC-1-N16R8](https://www.mouser.com/en/ProductDetail/Espressif-Systems/ESP32-S3-DevKitC-1-N16R8?qs=LnCj936TGbUBJEUUxFQ%252B%252BQ%3D%3D)。[乐鑫开发板目录](https://www.espressif.com/en/products/devkits/esp32-s3-series/esp32-s3-devkitc-1)有多种存储配置，默认选项可能与本教程不同。
 
 ## 如何选对版本
 

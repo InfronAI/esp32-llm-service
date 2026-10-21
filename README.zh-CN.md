@@ -82,8 +82,6 @@ HTTP 服务在后台线程中串行处理请求；shell 在主线程运行，以
 | USB 电源 | 可选 1 个 | 稳定 5 V USB 供电，裸板可选额定 1 A 或更高，遵循板厂规格 | 独立运行时复用合适的手机电源；开发期间 Mac USB 供电即可。 |
 | 数据转接头 / Hub | 可选 | 仅在线材与 Mac 接口不匹配时需要 | 复用能传数据的 USB 转接头，首次连接优先直接接线。 |
 
-原设备的芯片及内存已验证，品牌和 PCB 型号未记录；以上零售例子是**规格匹配项，并非逐一实测的板卡**。产品资料于 2026-10-21 核对，下单前确认已选 SKU、实时价格及库存。
-
 购买带 USB、BOOT/RESET 按钮的完整开发板。对上述 WROOM-1 模组，**N16R8** 表示 16 MB Flash 加 8 MB Octal PSRAM；**N16** 没有 PSRAM，**N8R8** 只有 8 MB Flash。Flash 与 PSRAM 接口不同，不能把 Octal PSRAM 当成 Octal Flash，参见[乐鑫模组规格表](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf)。
 
 商品选项、原生 USB 与 USB-UART 区别、数据线排查和逐步成功标志，见[硬件采购与首次连接教程](docs/hardware.zh-CN.md)。上述微雪板一个 USB-C 接口可能出现两个串口，教程说明如何选择。

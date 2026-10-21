@@ -82,8 +82,6 @@ Start with **one N16R8 board, one USB data cable, your existing Mac, and an exis
 | USB power adapter | Optional, 1 | Regulated 5 V USB supply; 1 A or greater is a practical bare-board choice, subject to the board specification | Reuse a suitable phone supply for standalone use. Mac USB powers development. |
 | Data adapter / hub | Optional | Only if cable and Mac connectors differ | Reuse a data-capable USB adapter; start with a direct cable where possible. |
 
-The original board's chip and memory were verified, but its brand/PCB model was not recorded. The retail examples above are **specification matches, not separately tested units**. Product references were checked on 2026-10-21; confirm the selected SKU, current price, and availability before ordering.
-
 Choose a complete development board with USB and BOOT/RESET buttons. For the referenced WROOM-1 module, **N16R8** means 16 MB Flash plus 8 MB Octal PSRAM; **N16** alone has no PSRAM, and **N8R8** has only 8 MB Flash. Flash and PSRAM have different interfaces, so do not confuse Octal PSRAM with Octal Flash. See the [Espressif module table](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf).
 
 For shopping variants, native USB versus USB-UART, cable checks, and a checklist of expected results, follow the [hardware and first-connection guide](docs/hardware.md). The Waveshare example has one USB-C socket that can expose two serial devices; the guide explains which one to use.
