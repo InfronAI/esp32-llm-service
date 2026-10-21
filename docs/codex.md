@@ -1,10 +1,12 @@
-# Codex 连接与开发工作流
+# Codex connection and development workflow
 
-Codex 在 Mac 本地执行开发工具，通过 USB 管理 ESP32。ESP32 端运行 MicroPython、C 推理模块和 HTTP 服务。这个开发链路适用于安装、修改、编译、部署和测试。
+**English** | [简体中文](codex.zh-CN.md)
 
-## 安装与登录
+Codex executes development tools locally on the Mac and manages the ESP32 over USB. The board runs MicroPython, the C inference module, and HTTP service. This workflow covers installation, editing, compilation, deployment, and testing.
 
-参考 [OpenAI Docs：Codex CLI](https://learn.chatgpt.com/docs/codex/cli)：
+## Install and sign in
+
+Follow [OpenAI Docs: Codex CLI](https://learn.chatgpt.com/docs/codex/cli):
 
 ```sh
 curl -fsSL https://chatgpt.com/codex/install.sh | sh
@@ -14,48 +16,48 @@ cd esp32-llm-service
 codex -C "$PWD"
 ```
 
-使用客户端提供的 ChatGPT 或其他可用登录方式。`codex --help` 可核对当前版本参数。本项目整理时本机 CLI 为 0.157.1；安装新版本后以本机帮助和官方文档为准。
+Use ChatGPT sign-in or another method offered by the client. Check current flags with `codex --help`. The local CLI was 0.157.1 when this project was documented; after upgrades, follow local help and official documentation.
 
-也可在支持本机目录和终端工具的 Codex 应用中打开此仓库。需要使用能访问 Mac USB 的本地会话；云端运行环境不能直接打开 Mac 的 `/dev/cu.*`。
+You can also open the repository in a Codex application that supports local directories and terminal tools. Use a local session with access to the Mac's USB devices; a cloud runtime cannot directly open the Mac's `/dev/cu.*` ports.
 
-## 如何访问 ESP32
+## How Codex accesses the ESP32
 
 ```mermaid
 sequenceDiagram
-    participant User as 开发者
-    participant Agent as Mac 本地 Codex
+    participant User as Developer
+    participant Agent as Local Codex on Mac
     participant Tools as mpremote / esptool / make
     participant Board as ESP32
-    User->>Agent: 描述任务和目标设备
-    Agent->>Tools: 检测串口、核对环境
-    Tools->>Board: USB 读取设备信息
-    Board-->>Agent: 芯片、固件、内存信息
-    Agent->>Tools: 构建并运行 deploy.py
-    Tools->>Board: 文件传输、SHA-256 校验、重启
-    Agent->>Board: LAN health 与 SDK 调用
-    Board-->>User: 推理结果与验证报告
+    User->>Agent: Describe task and target device
+    Agent->>Tools: Detect serial ports and inspect environment
+    Tools->>Board: Read device information over USB
+    Board-->>Agent: Chip, firmware, and memory information
+    Agent->>Tools: Build and run deploy.py
+    Tools->>Board: Transfer files, verify SHA-256, restart
+    Agent->>Board: LAN health and SDK requests
+    Board-->>User: Inference output and validation results
 ```
 
-串口及网络访问受当前客户端权限设置控制；需要权限时按客户端实际提示处理，无需为本项目关闭所有安全限制。板子不需要额外的 Codex 服务或 MCP 服务器。USB 串口同一时刻只能由一个维护工具占用，应先关闭 Arduino Serial Monitor、其他 mpremote 或串口终端。
+Serial and network access follow the client's current permission settings. Respond to actual permission prompts when needed; this project does not require disabling all safeguards. No additional Codex service or MCP server is needed on the board. Only one maintenance tool can own a serial port at a time; close Arduino Serial Monitor, other mpremote instances, or serial terminals first.
 
-## 推荐任务提示词
+## Suggested task prompts
 
-首次安装：
+Initial installation:
 
-> 阅读 README、AGENTS.md 和安装文档。检查本机开发环境和 ESP32 USB 设备，确认芯片、Flash、PSRAM 和固件。使用已有本地配置；若是新设备，运行配置生成器。保留原固件备份，按固定版本构建部署，然后验证普通生成、SSE 和重启恢复。报告真实硬件结果。
+> Read README, AGENTS.md, and the installation guide. Inspect the local environment and ESP32 USB device; confirm chip, Flash, PSRAM, and firmware. Use existing local configuration, or generate configuration for a new device. Preserve an original firmware backup, build and deploy pinned versions, then verify JSON generation, SSE, and restart recovery. Report actual hardware results.
 
-修改服务：
+Service changes:
 
-> 在现有接口上增加一个明确功能，先说明参数和响应变化。保持本地 C 推理与 shell 可用。运行相关主机检查；有板子时执行对应硬件测试，最后恢复服务。不要输出或提交本机凭据。
+> Add a clearly scoped feature to the existing API and explain its parameter and response changes. Preserve local C inference and the shell. Run relevant host checks and, if a board is available, the corresponding hardware tests. Restore the service afterward. Do not print or commit local credentials.
 
-排查问题：
+Troubleshooting:
 
-> 根据错误日志，依次核对主机代理、设备 IP、health、API 鉴权和 USB 启动信息，定位问题并修复。沿用现有配置，避免重复擦除 Flash。
+> Use the error logs to check host proxies, device IP, health, API authentication, and USB startup information in order. Identify and fix the cause. Preserve existing configuration and avoid repeated Flash erasure.
 
-## 配置与验证边界
+## Configuration and verification boundaries
 
-仓库 [AGENTS.md](../AGENTS.md)包含约束和测试入口。Codex 使用仓库 `.venv` 里的工具，保持密码文件在本机。GitHub 上的源码不包含个人网络信息和设备备份。
+[AGENTS.md](../AGENTS.md) contains constraints and test entry points. Codex uses tools in the project `.venv`; password files stay local. Published source excludes personal network information and device backups.
 
-ESP32 的 API Key 只用于调用它的 HTTP 服务。Codex 使用自己的登录身份和模型提供方。TinyStories 260K 缺少工具调用与 Responses API，不能用作 Codex 编码代理的完整模型后端。
+The ESP32 API key authenticates only its HTTP service. Codex uses its own login and model provider. TinyStories 260K lacks tool calling and the Responses API, so it cannot be a complete model backend for the Codex coding agent.
 
-测试报告应区分：本地主机检查、真实 ESP32 测试、历史测试记录。断开 USB 后仍可通过 LAN 调用已供电的板子；没有可访问的硬件时，不应把主机测试写成板上验证。
+Reports should distinguish local host checks, real ESP32 tests, and historical measurements. A powered board remains reachable over LAN without USB. Without accessible hardware, host checks must not be described as board verification.

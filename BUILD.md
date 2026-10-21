@@ -1,54 +1,56 @@
-# 原生推理模块构建
+# Build the native inference module
 
-完整首次安装见 [README](README.md)，开发机准备见 [docs/setup.md](docs/setup.md)。
+**English** | [简体中文](BUILD.zh-CN.md)
+
+See the [README](README.md) for a complete installation and [setup guide](docs/setup.md) for host tools.
 
 ```sh
 .venv/bin/python scripts/prepare.py
 .venv/bin/python scripts/build_native.py
 ```
 
-构建脚本查找 `ESP32_CROSS`、PATH 中的 `xtensa-esp32s3-elf-gcc`，或 macOS/Linux Arduino 数据目录中的 `esp-x32/2601`。其他目录可显式指定：
+The build script checks `ESP32_CROSS`, `xtensa-esp32s3-elf-gcc` on PATH, and `esp-x32/2601` in the macOS/Linux Arduino data directories. For another installation path, set the compiler prefix explicitly:
 
 ```sh
 ESP32_CROSS=/path/to/bin/xtensa-esp32s3-elf- .venv/bin/python scripts/build_native.py
 ```
 
-注意前缀最后的连字符。`scripts/build_native.sh` 是同一个构建入口的 shell 包装。
+Keep the trailing hyphen in the prefix. `scripts/build_native.sh` wraps the same build entry point.
 
-## 固定版本
+## Pinned versions
 
-| 部件 | 固定值 |
+| Component | Pinned value |
 | --- | --- |
-| MicroPython | v1.29.0，commit `0fd6c573ea815774668bbb16b8e197c8822368b2` |
-| 模型及原始内核 | doryiii/esp32-llm，commit `c6c647f7bfbb74efd2bbfd9a1725da4a903589f4` |
-| Arduino ESP32 core | 3.3.8，使用其 `esp-x32/2601` 工具链 |
-| 模块格式 | Xtensa windowed ABI，MicroPython native `.mpy` |
-| 编译参数 | `-O3 -ffp-contract=off -fno-math-errno` |
-| 动态链接选项 | `ARCH=xtensawin`、`LINK_RUNTIME=1` |
+| MicroPython | v1.29.0, commit `0fd6c573ea815774668bbb16b8e197c8822368b2` |
+| Model and original kernel | doryiii/esp32-llm, commit `c6c647f7bfbb74efd2bbfd9a1725da4a903589f4` |
+| Arduino ESP32 core | 3.3.8, supplying the `esp-x32/2601` toolchain |
+| Module format | Xtensa windowed ABI, MicroPython native `.mpy` |
+| Compiler flags | `-O3 -ffp-contract=off -fno-math-errno` |
+| Dynamic linking | `ARCH=xtensawin`, `LINK_RUNTIME=1` |
 
-`LINK_RUNTIME=1` 链入浮点数学运行库；`ar` 和 `pyelftools` 是 MicroPython 动态链接工具的 Python 依赖。不需要构建整个 MicroPython 固件。
+`LINK_RUNTIME=1` links the floating-point math runtime. `ar` and `pyelftools` are Python dependencies of MicroPython's dynamic linking tools. Building the entire MicroPython firmware is unnecessary.
 
-源码中 `native/module.c` 严格检查权重头、缓冲区大小、对齐、token 范围和上下文位置；当前只接受本项目 260K 布局。`native/transformer.c` 使用四路浮点累加的矩阵乘法，沿用 llama2.c 的 RMSNorm、RoPE、注意力、SwiGLU 和分类器。模型状态由 Python 持有，保证 C 调用期间缓冲区有效。
+`native/module.c` checks the weight header, buffer size, alignment, token range, and context position. It currently accepts only the project's fixed 260K layout. `native/transformer.c` uses matrix multiplication with four floating-point accumulators and retains llama2.c's RMSNorm, RoPE, attention, SwiGLU, and classifier. Python owns model state so buffers remain valid during C calls.
 
-产物 `native/tinyllm_native.mpy` 属于本地构建文件，不进入 Git。升级固件或编译器后要重建并在板上重新验证，不能假定 `.mpy` 跨 ABI 通用。
+The output, `native/tinyllm_native.mpy`, is a local build artifact excluded from Git. Rebuild and revalidate on the board after changing firmware or compiler versions; `.mpy` files are not universally portable across ABIs.
 
-## 验证
+## Verification
 
-主机参考验证不需要板子：
+The host reference check does not require a board:
 
 ```sh
 .venv/bin/python scripts/check_native.py --reference-only
 ```
 
-板上验证会暂停网络服务，测试后脚本自动重启：
+The device check pauses network services and automatically restarts the board afterward:
 
 ```sh
 .venv/bin/python scripts/check_native.py --port /dev/cu.usbmodemXXXX
 ```
 
-它比较独立 `tests/reference_run.c` 的分词、32 个贪心 token、首步 512 维 logits 和权重 SHA-256。允许 logits 最大绝对误差小于 `1e-4`。当前实测为约 `8.45e-6`。结果写入被忽略的 `reports/`。
+It compares tokenization, 32 greedy output tokens, the first 512-element logit vector, and weight SHA-256 against the independent `tests/reference_run.c`. Maximum absolute logit error must be below `1e-4`; the recorded result is approximately `8.45e-6`. Reports are written to the ignored `reports/` directory.
 
-发布前在主机运行：
+Before publishing, run the host checks:
 
 ```sh
 .venv/bin/python -m compileall -q device scripts tests

@@ -1,5 +1,7 @@
 # Third-party sources and licenses
 
+**English** | [简体中文](THIRD_PARTY_NOTICES.zh-CN.md)
+
 The repository's MIT license applies to its original project code and documentation. Upstream notices are retained; it does not relicense downloaded model weights, firmware, or toolchains.
 
 | Component | Source / provenance | License and handling |
@@ -12,3 +14,5 @@ The repository's MIT license applies to its original project code and documentat
 | Python host tools | Pinned packages in `requirements.txt` | Installed separately, under their respective package licenses |
 
 The native adaptation changes allocation ownership, validates a fixed checkpoint layout, uses a portable four-accumulator matrix multiplication, and exposes two MicroPython native functions. The independent reference is used for correctness checks rather than as the board implementation.
+
+Other projects linked in the [model selection guide](docs/models.md) are research references; their code, weights, and training data are not distributed here. Check the upstream terms of each selected asset when integrating it.

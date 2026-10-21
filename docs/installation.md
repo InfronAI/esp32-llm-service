@@ -1,8 +1,10 @@
-# 安装、配置与恢复
+# Installation, configuration, and recovery
 
-前提是完成[开发环境](setup.md)。USB 维护通过串口访问物理板子，维护期间会中断现有网络应用。
+**English** | [简体中文](installation.zh-CN.md)
 
-## 1. 找到目标板
+Complete [environment setup](setup.md) first. USB maintenance accesses the physical board through its serial port and interrupts the running network application.
+
+## 1. Identify the target board
 
 ```sh
 .venv/bin/python -m serial.tools.list_ports -v
@@ -10,11 +12,11 @@ export ESP32_PORT=/dev/cu.usbmodemXXXX
 .venv/bin/python -m esptool --chip esp32s3 --port "$ESP32_PORT" flash-id
 ```
 
-原生 USB 的 Espressif VID 为 `303A`。不要根据文档里的示例端口盲选设备。部署脚本可自动选择唯一 Espressif USB 设备；连接多个设备时要求显式 `--port`。USB-UART 桥接板可能使用其他 VID，需手动指定。
+Espressif's native USB VID is `303A`. Use the detected device, not a copied example port. Deployment auto-selects a single Espressif USB device; with multiple devices, pass `--port`. USB-UART bridges may have other VIDs and require explicit selection.
 
-不能进入 ROM 下载器时，按住 BOOT，按下并松开 RESET，再松开 BOOT。重新列出串口，因为 ROM 和应用模式的端口可能不同。
+If ROM download mode is unavailable, hold BOOT, press and release RESET, then release BOOT. List ports again: ROM and application modes can use different device paths.
 
-本项目首次安装的旧固件也可通过以下 1200-baud touch 进入下载模式；它依赖旧固件支持，不是所有板子的通用方法：
+The board's previous firmware also supported this 1200-baud touch sequence. It depends on the existing firmware and is not universal:
 
 ```sh
 .venv/bin/python - "$ESP32_PORT" <<'PY'
@@ -25,9 +27,9 @@ with serial.Serial(sys.argv[1], 1200) as port:
 PY
 ```
 
-## 2. 备份原固件
+## 2. Back up the original firmware
 
-确认 Flash 为 16 MB 后，备份整个地址空间：
+After confirming 16 MB Flash, back up the entire address space:
 
 ```sh
 mkdir -p backups
@@ -35,13 +37,13 @@ mkdir -p backups
 shasum -a 256 backups/original.bin > backups/original.bin.sha256
 ```
 
-其他容量要调整长度。备份可能含设备原有凭据，保存在被忽略的 `backups/` 内。本项目实际首次备份文件名包含日期；仓库教程使用 `original.bin` 作为新安装的示例名。
+Adjust the length for other capacities. Backups may contain existing device credentials; keep them in ignored `backups/`. The original project backup used a dated filename; this tutorial uses `original.bin` as an example for a new installation.
 
-## 3. 安装固件
+## 3. Install firmware
 
-首先运行 `.venv/bin/python scripts/prepare.py --only firmware`。清单绑定版本、文件名及 SHA-256。
+First run `.venv/bin/python scripts/prepare.py --only firmware`. The manifest pins the version, filename, and SHA-256.
 
-**以下操作擦除已有固件和用户文件。正常代码更新使用部署脚本，无需执行这一段。**
+**The following commands erase existing firmware and user files. Use the deployment script for routine code updates instead.**
 
 ```sh
 .venv/bin/python -m esptool --chip esp32s3 --port "$ESP32_PORT" --after no-reset erase-flash
@@ -49,17 +51,17 @@ shasum -a 256 backups/original.bin > backups/original.bin.sha256
 .venv/bin/python -m serial.tools.list_ports -v
 ```
 
-在已验证板子上，刷写后普通 reset 曾停留在下载模式，`watchdog-reset` 可正常启动。若串口发生变化，更新 `ESP32_PORT`。
+On the verified board, an ordinary reset sometimes left the chip in download mode; `watchdog-reset` booted correctly. Update `ESP32_PORT` if the port changes.
 
-检查 MicroPython 和 PSRAM：
+Check MicroPython and available memory:
 
 ```sh
 .venv/bin/mpremote connect "$ESP32_PORT" exec 'import sys, gc, os; print(sys.version); print(os.uname()); gc.collect(); print(gc.mem_free())'
 ```
 
-8 MB PSRAM 板在未加载应用时应能看到数 MB 的 Python 堆；本项目初始堆约 8.3 MB。明显不足时先核对 PSRAM 型号与固件变体。
+An 8 MB PSRAM board should expose several MB of Python heap before loading the application; the initial heap here was approximately 8.3 MB. If substantially less is available, check the PSRAM type and firmware variant.
 
-## 4. 配置与模型
+## 4. Configure the device and prepare the model
 
 ```sh
 .venv/bin/python scripts/prepare.py
@@ -67,37 +69,37 @@ shasum -a 256 backups/original.bin > backups/original.bin.sha256
 .venv/bin/python scripts/configure.py --ssid 'YOUR_2.4G_WIFI'
 ```
 
-Wi-Fi 密码交互输入；其余凭据随机生成。不要把密码作为 shell 命令参数传入。新安装配置生成器不覆盖已有配置，修改现有板子应保留并编辑原文件。
+Enter the Wi-Fi password interactively; other credentials are generated randomly. Avoid passwords in shell command arguments. The new-installation generator refuses to overwrite existing files. Preserve and edit existing configuration when maintaining an installed board.
 
-### 配置字段
+### Configuration fields
 
-| `device/settings.json` 字段 | 含义 |
+| Field in `device/settings.json` | Meaning |
 | --- | --- |
-| `ssid` / `wifi_password` | 板子创建的 WPA2 热点名称和密码 |
-| `sta_ssid` / `sta_password` | 板子接入的 2.4 GHz Wi-Fi |
-| `user` | shell 登录名，生成器默认 `esp32` |
-| `salt` / `password_hash` | shell 的随机盐及 SHA-256(salt + password) |
-| `port` | shell TCP 端口，默认 23 |
-| `api_key` | HTTP Bearer 密钥 |
-| `api_port` | HTTP 端口，默认 8000 |
+| `ssid` / `wifi_password` | Name and password of the board's WPA2 access point |
+| `sta_ssid` / `sta_password` | 2.4 GHz Wi-Fi network joined by the board |
+| `user` | Shell login name; generator default is `esp32` |
+| `salt` / `password_hash` | Random salt and SHA-256(salt + password) for shell login |
+| `port` | Shell TCP port, default 23 |
+| `api_key` | HTTP Bearer key |
+| `api_port` | HTTP port, default 8000 |
 
-热点固定为 `192.168.4.1/24`；STA 使用 DHCP。代码将网络主机名设为 `esp32-llm`，但不保证路由器提供同名 DNS/mDNS 解析，因此示例采用 IP。
+The AP uses `192.168.4.1/24`; STA uses DHCP. The code sets hostname `esp32-llm`, but DNS/mDNS resolution depends on the network and is not guaranteed, so examples use IP addresses.
 
-shell 密码散列是简化认证机制，缺少密码学 KDF 的慢哈希保护。Wi-Fi 密码和 API Key 需要明文供设备使用。已认证 shell 能执行任意 MicroPython，具备整板管理能力。使用可信局域网，不要直接端口映射到公网。
+Shell password hashing is a simple authentication mechanism without a slow password KDF. Wi-Fi passwords and the API key must remain available in plaintext to the device. An authenticated shell can execute arbitrary MicroPython and administer the board. Use a trusted LAN rather than public Internet port forwarding.
 
-## 5. 部署
+## 5. Deploy
 
 ```sh
 .venv/bin/python scripts/deploy.py --port "$ESP32_PORT" --models --settings
 ```
 
-写入清单：`boot.py`、`net.py`、`shell.py`、`llm.py`、`api.py`、`tinyllm_native.mpy`、两个模型文件、`settings.json`，最后写入 `main.py`。每个文件在板上做 SHA-256 校验；相同内容跳过。脚本设置 RTC UTC 后重启。
+Deployment writes `boot.py`, `net.py`, `shell.py`, `llm.py`, `api.py`, `tinyllm_native.mpy`, two model assets, and `settings.json`, then writes `main.py` last. Every file is SHA-256 checked on the board; unchanged content is skipped. The script sets the RTC to UTC and restarts the board.
 
-这是逐文件更新，不是双分区 OTA；传输中断时可能需要通过 USB 重跑部署。用户 `/home` 文件保留。`device/welcome.txt` 是可选说明文件，不影响服务启动。
+This is a file-by-file update, not dual-partition OTA. An interrupted transfer may require rerunning USB deployment. User files in `/home` are preserved. `device/welcome.txt` is optional explanatory text and does not affect startup.
 
-## 6. 获取地址与验证
+## 6. Find the address and verify
 
-可直连板子热点，再运行 `./connect.command`；输入 `reports/access.json` 中的用户名和 shell 密码，执行 `ifconfig` 查看 LAN IP。也可从路由器 DHCP 列表获取地址。
+Connect directly to the board AP and run `./connect.command`. Log in using the username and shell password from `reports/access.json`, then run `ifconfig` to find the LAN IP. Alternatively, inspect the router's DHCP list.
 
 ```sh
 .venv/bin/python scripts/configure.py --host-only 192.168.1.50
@@ -105,17 +107,17 @@ shell 密码散列是简化认证机制，缺少密码学 KDF 的慢哈希保护
 .venv/bin/python scripts/check_llm.py
 ```
 
-`--host-only` 只修改 Mac 客户端文件，不重置密钥或 Wi-Fi。单次临时地址可用 `scripts/chat.py --url http://192.168.4.1:8000/v1`。
+`--host-only` changes the Mac client file without resetting credentials or Wi-Fi. For a temporary address, use `scripts/chat.py --url http://192.168.4.1:8000/v1`.
 
-USB 日志可用 `mpremote connect "$ESP32_PORT" repl` 查看；按板上 RESET 观察启动，Ctrl-] 退出。进入 REPL 维护可能中断主程序，结束后执行 `mpremote connect "$ESP32_PORT" reset`。
+View USB logs with `mpremote connect "$ESP32_PORT" repl`; press RESET on the board to observe startup and Ctrl-] to exit. REPL maintenance can interrupt the main application. Finish with `mpremote connect "$ESP32_PORT" reset`.
 
-## 7. 恢复备份
+## 7. Restore a backup
 
-仅在确定要撤销当前系统时执行，恢复会覆盖整个 Flash，包括后来创建的文件：
+Use this only when reverting the installed system. Restoration overwrites the entire Flash, including files created since the backup:
 
 ```sh
 shasum -a 256 -c backups/original.bin.sha256
 .venv/bin/python -m esptool --chip esp32s3 --port "$ESP32_PORT" --baud 921600 --after watchdog-reset write-flash 0 backups/original.bin
 ```
 
-先核对目标串口和备份校验结果。项目不包含个人设备的原始 Flash 备份。
+Check the target port and backup checksum first. Personal device backups are not included in the repository.

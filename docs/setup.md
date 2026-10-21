@@ -1,16 +1,18 @@
-# 开发平台与环境准备
+# Development platform and environment setup
 
-本项目已在 Apple Silicon Mac 上完成构建、USB 烧录和 LAN 调用。主机 CI 在 Linux 上验证 Python 工具和 C 参考实现；Linux USB 部署没有本项目的实机验证记录。
+**English** | [简体中文](setup.zh-CN.md)
 
-## 硬件
+This project has been built, flashed over USB, and called over LAN from an Apple Silicon Mac. The host CI template targets Linux for Python tools and the C reference implementation, but is not enabled. Linux USB deployment has no physical-device validation record in this project.
 
-准备 ESP32-S3、USB 数据线、稳定供电和 2.4 GHz WPA2 网络。已验证板卡为 16 MB Flash、8 MB Octal PSRAM。USB 供电线不一定支持数据；串口列表只有蓝牙或 debug-console 时先检查线材和 USB 接口。
+## Hardware
 
-`esptool flash-id` 可核对 Flash 容量；板卡标识、启动信息和实际内存用于确认 PSRAM 类型。Octal PSRAM 使用 `ESP32_GENERIC_S3-SPIRAM_OCT` 固件。[MicroPython 官方下载页](https://micropython.org/download/ESP32_GENERIC_S3/)明确区分普通与 Octal SPIRAM 变体。
+Start with the [hardware shopping and connection guide](hardware.md). You need an ESP32-S3, USB data cable, stable power, and a 2.4 GHz WPA2 network. The verified configuration is 16 MB Flash and 8 MB Octal PSRAM. A charging cable may lack data wires; if the port list only contains Bluetooth or debug-console entries, check the cable and connector.
 
-## Mac 工具
+`esptool flash-id` checks Flash capacity. Use module markings, boot information, and actual memory availability to identify PSRAM. Octal PSRAM requires the `ESP32_GENERIC_S3-SPIRAM_OCT` firmware. The [official MicroPython download page](https://micropython.org/download/ESP32_GENERIC_S3/) distinguishes the standard and Octal SPIRAM variants.
 
-安装 [Homebrew](https://brew.sh/) 后执行：
+## Mac tools
+
+After installing [Homebrew](https://brew.sh/), run:
 
 ```sh
 xcode-select --install
@@ -19,15 +21,15 @@ python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Xcode Command Line Tools 提供 `cc` 和 `make`；若已安装，保留现有版本即可。
+Xcode Command Line Tools supply `cc` and `make`. Keep an existing installation if already available.
 
-| 依赖 | 本项目用途 |
+| Dependency | Purpose in this project |
 | --- | --- |
-| esptool 5.6.0 | ROM 下载模式检测、备份、擦除和刷写 |
-| mpremote 1.29.0 / pyserial | USB REPL、传文件、执行板上测试 |
-| ar 1.0.1 / pyelftools 0.33 | MicroPython 原生模块链接 |
-| openai 3.35.1 / httpx2 2.16.0 | 官方 SDK 兼容性测试和流式示例 |
-| Arduino ESP32 core 3.3.8 | 提供 Xtensa ESP32-S3 GCC 交叉编译器 |
+| esptool 5.6.0 | ROM download mode, backup, erase, and flashing |
+| mpremote 1.29.0 / pyserial | USB REPL, file transfer, and device tests |
+| ar 1.0.1 / pyelftools 0.33 | MicroPython native module linking |
+| openai 3.35.1 / httpx2 2.16.0 | Official SDK compatibility checks and streaming examples |
+| Arduino ESP32 core 3.3.8 | Xtensa ESP32-S3 GCC cross compiler |
 
 ```sh
 arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
@@ -35,17 +37,17 @@ arduino-cli core install esp32:esp32@3.3.8 --additional-urls https://espressif.g
 arduino-cli core list
 ```
 
-使用固定 core 版本，以重现已验证工具链。[Arduino CLI 官方文档](https://docs.arduino.cc/arduino-cli/commands-reference/arduino-cli_core_install)说明 `PACKAGER:ARCH@VERSION` 和 `--additional-urls` 用法。
+The pinned core version reproduces the verified toolchain. The [Arduino CLI documentation](https://docs.arduino.cc/arduino-cli/commands-reference/arduino-cli_core_install) describes `PACKAGER:ARCH@VERSION` and `--additional-urls`.
 
-Mac 默认编译器路径形如：
+The default compiler location on macOS resembles:
 
 ```text
 ~/Library/Arduino15/packages/esp32/tools/esp-x32/2601/bin/xtensa-esp32s3-elf-gcc
 ```
 
-构建脚本自动发现此路径；自定义安装位置可通过 `ESP32_CROSS` 指定编译器前缀。这里不需要 Arduino IDE GUI，也不需要编写 Arduino sketch。
+The build script discovers this path automatically. For custom paths, use `ESP32_CROSS` to set the compiler prefix. No Arduino IDE GUI or sketch is required for this project.
 
-## 下载与校验
+## Downloads and integrity checks
 
 ```sh
 .venv/bin/python scripts/prepare.py
@@ -53,17 +55,17 @@ Mac 默认编译器路径形如：
 .venv/bin/python scripts/build_native.py
 ```
 
-`--only firmware|models|source` 可单独准备一类资源。现有资源校验通过时直接复用；下载先写临时文件，SHA-256 正确后替换目标文件，失败保留原文件。MicroPython checkout 要与固定 commit 一致且没有 tracked 修改。
+Use `--only firmware|models|source` to prepare one asset group. Existing verified assets are reused. Downloads go to temporary files and replace the destination only after SHA-256 verification; failures preserve the previous file. The MicroPython checkout must match the pinned commit and have no tracked modifications.
 
-生成目录 `third_party/`、模型 `.bin`、固件 `.bin`、`.venv/` 和原生 `.mpy` 都被 Git 忽略，源码清单和下载器进入仓库。
+Generated `third_party/`, model `.bin` files, firmware `.bin` files, `.venv/`, and native `.mpy` files are ignored by Git. Source manifests and download scripts are versioned.
 
-## 网络与代理
+## Networking and proxies
 
-下载依赖使用主机正常网络环境。调用 ESP32 时绕过代理：curl 使用 `--noproxy '*'`，SDK 使用 `DefaultHttpxClient(trust_env=False)`。若校园/企业网络启用了客户端隔离，即使同一 SSID 也可能无法直连；可改用板子热点验证。
+Dependency downloads use the host's normal network configuration. Bypass proxies when calling the ESP32: use curl `--noproxy '*'` or SDK `DefaultHttpxClient(trust_env=False)`. Campus or corporate client isolation may prevent communication even on the same SSID; use the board's direct AP to isolate network problems.
 
-ESP32-S3 不支持 5 GHz Wi-Fi。配置 SSID 要包含准确空格、大小写和后缀，以实际 2.4 GHz 广播名称为准。
+ESP32-S3 Wi-Fi uses 2.4 GHz, not 5 GHz. Copy the exact broadcast SSID, including spaces, case, and suffixes.
 
-## 检查结果
+## Check the environment
 
 ```sh
 .venv/bin/python -m pip check
@@ -71,4 +73,4 @@ ESP32-S3 不支持 5 GHz Wi-Fi。配置 SSID 要包含准确空格、大小写�
 .venv/bin/python scripts/check_native.py --reference-only
 ```
 
-最后一项在 Mac 编译并运行独立 C 参考实现，不会连接或修改 ESP32。后续操作见[安装文档](installation.md)。
+The last command compiles and executes the independent C reference on the Mac without connecting to or modifying the ESP32. Continue with [installation](installation.md).

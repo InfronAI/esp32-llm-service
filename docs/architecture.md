@@ -1,18 +1,20 @@
-# 系统架构与实现
+# System architecture and implementation
 
-## 分层
+**English** | [简体中文](architecture.zh-CN.md)
+
+## Layers
 
 ```mermaid
 flowchart TB
-    Entry[main.py · 启动与恢复窗口]
+    Entry[main.py · startup and recovery window]
     Network[net.py · STA / AP]
-    Shell[shell.py · 主线程 TCP 23]
-    API[api.py · 后台线程 TCP 8000]
+    Shell[shell.py · main thread TCP 23]
+    API[api.py · background thread TCP 8000]
     Model[llm.py · Tokenizer / Sampler / Generator]
-    Module[module.c · MicroPython C ABI 与边界检查]
+    Module[module.c · MicroPython C ABI and bounds checks]
     Engine[transformer.c · forward / matmul / attention]
-    Weights[stories260K.bin · FP32 权重]
-    Tokenizer[tok512.bin · 512 词表]
+    Weights[stories260K.bin · FP32 weights]
+    Tokenizer[tok512.bin · 512-entry vocabulary]
     Entry --> Network
     Entry --> Shell
     Entry --> API
@@ -22,67 +24,67 @@ flowchart TB
     Tokenizer --> Model
 ```
 
-Mac 的 `mpremote` 通过 USB REPL 部署文件，`esptool` 通过 ROM 下载器刷写固件。部署完成后，这两条开发链路不参与推理。HTTP 服务只使用板上文件及计算，不调用远程模型。
+On the Mac, `mpremote` deploys files through the USB REPL and `esptool` flashes firmware through the ROM bootloader. Neither development connection participates in inference after deployment. The HTTP service uses only on-board files and computation; it does not call a remote model.
 
-## 启动时序
+## Startup order
 
-1. `boot.py` 做垃圾回收，`main.py` 留出 2 秒 USB 恢复窗口。
-2. `net.setup()` 创建 WPA2 AP，然后接入配置中的 2.4 GHz STA 网络，等待最多约 20 秒。后台持续尝试重连。
-3. `llm.Model()` 读入权重与分词器，分配连续浮点运行状态。
-4. 创建 32 KiB 栈的 HTTP 后台线程，监听所有网络接口的 8000 端口。
-5. 主线程启动 shell，监听所有网络接口的 23 端口。
+1. `boot.py` runs garbage collection; `main.py` leaves a two-second USB recovery window.
+2. `net.setup()` creates a WPA2 AP, then joins the configured 2.4 GHz STA network, waiting up to about 20 seconds. Reconnection continues in the background.
+3. `llm.Model()` loads weights and tokenizer and allocates contiguous floating-point state.
+4. An HTTP background thread with a 32 KiB stack starts listening on port 8000 on all network interfaces.
+5. The main thread starts the shell on port 23 on all network interfaces.
 
-模型初始化失败时记录异常，继续尝试启动 shell，方便通过 USB 或网络修复。HTTP 线程运行中发生致命错误没有自动监督重启机制，应从日志定位或重启板子。路由器不可达时 AP 入口仍在。
+If model initialization fails, the exception is logged and shell startup is still attempted so the installation can be repaired over USB or the network. A fatal error inside the running HTTP thread has no automatic supervisor restart; inspect logs or reboot. The AP remains available when the router cannot be reached.
 
-## 请求执行路径
+## Request execution
 
 ```mermaid
 sequenceDiagram
-    participant C as HTTP 客户端
+    participant C as HTTP client
     participant A as api.py
     participant P as llm.py
-    participant N as 原生 C 模块
-    C->>A: POST + Bearer Key + messages
-    A->>A: 解析 HTTP、鉴权、参数校验
-    A->>P: 文本连接、BPE 编码
-    P->>N: 逐位置处理提示词
-    loop 每个生成 token
-        N-->>P: 512 维 logits
-        P->>P: greedy 或 temperature/top_p 采样
-        P-->>A: 解码后的字节
-        A->>A: stop 匹配、增量 UTF-8 解码
-        A-->>C: SSE 内容块，或积累普通响应
-        P->>N: 下一个 token 的 forward
+    participant N as Native C module
+    C->>A: POST + Bearer key + messages
+    A->>A: Parse HTTP, authenticate, validate parameters
+    A->>P: Join text and BPE encode
+    P->>N: Process prompt positions
+    loop Each generated token
+        N-->>P: 512-element logits
+        P->>P: Greedy or temperature/top_p sampling
+        P-->>A: Decoded bytes
+        A->>A: Match stop strings, decode UTF-8 incrementally
+        A-->>C: SSE content chunk, or accumulate JSON response
+        P->>N: Forward pass for the next token
     end
-    A-->>C: finish_reason、usage、DONE 或完整 JSON
+    A-->>C: finish_reason, usage, DONE or complete JSON
 ```
 
-普通 JSON 与 SSE 共用同一生成器。每次请求重新从位置 0 处理提示词；没有跨请求聊天状态或 KV cache 复用。token 前向计算间短暂让出调度，使 shell 保持响应。
+JSON and SSE use the same generator. Every request processes its prompt from position zero; there is no persistent conversation state or KV reuse between requests. Brief scheduling yields between token forward passes keep the shell responsive.
 
-## 模型与内存
+## Model and memory
 
-| 项目 | 值 |
+| Property | Value |
 | --- | --- |
-| 训练参数 | 260,032 |
+| Trained parameters | 260,032 |
 | dim / hidden_dim | 64 / 172 |
-| 层数 / attention heads / KV heads | 5 / 8 / 4 |
-| vocab / context | 512 / 512 |
-| 权重文件 | 1,056,540 字节，含文件头和旧格式保留数据 |
-| 分词器文件 | 6,227 字节 |
-| C 运行状态 | 676,192 字节，含 KV cache、attention 和 logits |
+| Layers / attention heads / KV heads | 5 / 8 / 4 |
+| Vocabulary / context | 512 / 512 |
+| Weight file | 1,056,540 bytes, including the header and legacy reserved data |
+| Tokenizer file | 6,227 bytes |
+| Native state | 676,192 bytes, including KV cache, attention, and logits |
 
-大块缓冲区由 MicroPython 堆持有，使用板载 PSRAM 提供容量。C 模块不持有脱离 Python 生命周期的权重指针。不同构建会改变剩余堆空间；已测重复请求后仍有约 5.1 MB 空闲堆。
+Large buffers are owned by the MicroPython heap, with capacity supplied by board PSRAM. The C module does not retain weight pointers beyond their Python owners' lifetime. Remaining heap depends on the build; approximately 5.1 MB remained after repeated requests in the recorded test.
 
-`module.c` 只接受已知权重尺寸、7 个固定配置值、4 字节对齐、正确运行状态长度和有效 token/position。切换模型需要同步修改 C 布局检查、分词器、API 元数据与参考测试。
+`module.c` accepts only the known weight size, seven fixed configuration values, four-byte alignment, the expected state size, and valid tokens/positions. Changing models requires coordinated changes to C layout checks, tokenization, API metadata, and reference tests. See [model choices and constraints](models.md) for alternatives and resource formulas.
 
-## 并发与限制
+## Concurrency and limits
 
-HTTP accept 循环一次处理一个连接，backlog 为 2；生成期间 `/health` 等 HTTP 请求也会排队。多个客户端应自行串行化或设置足够超时。socket 读写超时为 5 秒，它不等于整次推理的总超时。
+The HTTP accept loop handles one connection at a time, with backlog 2. Even `/health` waits behind an active generation request. Multiple clients should serialize calls or allow sufficient timeout. The socket read/write timeout is five seconds, not a total inference deadline.
 
-shell 同时最多一个会话。MicroPython GIL 和原生调用使它不等同于 Linux 多进程系统。shell 主线程使用 Timer 0 的 dupterm 通知处理中断；用户脚本应避免复用 Timer 0。
+The shell permits one session at a time. The MicroPython GIL and native calls do not provide Linux-style multiprocessing. Timer 0 assists dupterm interrupt notification on the main thread; user scripts should avoid reusing it.
 
-没有 TLS、SSH、OTA、进程隔离或公网入口。系统文件写保护用于防误操作，已登录 shell 用户仍能运行任意 MicroPython。
+There is no TLS, SSH, OTA, process isolation, or public Internet entry point. System-file write protection prevents accidental changes, while an authenticated shell user can still execute arbitrary MicroPython.
 
-## 为什么使用原生 .mpy
+## Why a native .mpy module
 
-借助 [MicroPython 原生模块机制](https://docs.micropython.org/en/latest/develop/natmod.html)，在保留现有 shell 和官方固件的同时，将矩阵乘法及 Transformer 前向计算放入 C。Python 负责易维护的网络协议、分词和采样。这减少了整个固件的定制构建成本，也要求明确固定 ABI 和模型布局。
+The [MicroPython native module mechanism](https://docs.micropython.org/en/latest/develop/natmod.html) moves matrix multiplication and Transformer forward passes into C while retaining the existing shell and official firmware. Python handles networking, tokenization, and sampling. This reduces custom firmware build work but requires a pinned ABI and an explicit model layout.

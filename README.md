@@ -1,42 +1,46 @@
 # ESP32 LLM Service
 
-在 ESP32-S3 上运行 TinyStories 260K 语言模型，通过 Wi-Fi 提供 OpenAI Chat Completions 兼容接口，并保留可登录的 MicroPython 命令行。
+**English** | [简体中文](README.zh-CN.md)
 
-**推理、权重、分词器和 KV cache 均在 ESP32 上。** Mac 负责开发、USB 部署和发送 HTTP 请求；开发结束后，板子只需供电即可提供服务。
+Run a language model locally on an ESP32-S3, expose an OpenAI Chat Completions compatible API over Wi-Fi, and keep a login-based MicroPython shell available.
 
-> 模型有 260,032 个参数，适合英文故事续写，未经聊天指令训练。它不具备通用中文问答、工具调用或 ChatGPT 的能力。“OpenAI 兼容”指本文列出的 HTTP 请求与响应格式。
+**Inference, weights, tokenization, and the KV cache all run on the ESP32.** The Mac builds and deploys the project over USB and sends HTTP requests. Once installed, the board only needs power to serve requests.
 
-[环境准备](docs/setup.md) · [安装与恢复](docs/installation.md) · [Codex 开发](docs/codex.md) · [系统架构](docs/architecture.md) · [API](docs/api.md) · [维护排障](docs/operations.md) · [验证记录](docs/validation.md)
+The included, hardware-verified backend is **TinyStories 260K FP32**. ESP32-S3 can also run larger models with suitable quantization, memory placement, and inference kernels. See [model choices and constraints](docs/models.md) for six candidates, their repositories, and integration requirements. This release loads only the pinned 260K checkpoint.
 
-## 已实现
+> The included model has 260,032 parameters and continues simple English stories. It has no chat instruction training, general Chinese question answering, or tool calling. “OpenAI compatible” describes the documented HTTP request and response formats.
 
-- TinyStories 260K FP32 原生 C Transformer；MicroPython 实现 BPE 分词和采样。
-- `GET /health`、`GET /v1/models`、`POST /v1/chat/completions`、`POST /v1/completions`。
-- 普通 JSON 和 SSE 流式响应、Bearer 鉴权、usage、停止词和可复现采样。
-- 连接 2.4 GHz Wi-Fi，同时保留 WPA2 热点入口 `192.168.4.1`。
-- TCP shell：登录、文件读写、系统信息、MicroPython 执行、Ctrl-C 和重启。
-- 固定版本下载、SHA-256 校验、配置生成、原生模块构建、增量部署和验证脚本。
+[Documentation index](docs/README.md) · [Hardware and shopping](docs/hardware.md) · [Setup](docs/setup.md) · [Installation and recovery](docs/installation.md) · [Codex workflow](docs/codex.md) · [Architecture](docs/architecture.md) · [Model selection](docs/models.md) · [API](docs/api.md) · [Operations](docs/operations.md) · [Validation](docs/validation.md)
 
-## 系统架构
+## Features
+
+- TinyStories 260K FP32 Transformer in native C; BPE tokenization and sampling in MicroPython.
+- `GET /health`, `GET /v1/models`, `POST /v1/chat/completions`, and `POST /v1/completions`.
+- JSON and SSE streaming responses, Bearer authentication, usage accounting, stop strings, and reproducible sampling.
+- A 2.4 GHz Wi-Fi station connection plus a WPA2 access point at `192.168.4.1`.
+- TCP shell with login, file operations, system information, MicroPython execution, Ctrl-C, and reboot.
+- Pinned downloads, SHA-256 checks, configuration generation, native builds, incremental deployment, and verification scripts.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph Host[Mac 开发与调用端]
-        Codex[Codex 本地会话]
+    subgraph Host[Mac development and clients]
+        Codex[Local Codex session]
         Tools[Python / mpremote / esptool]
         Client[curl / OpenAI SDK]
         Terminal[terminal.py]
         Codex --> Tools
     end
     subgraph Board[ESP32-S3 · MicroPython 1.29.0]
-        USB[USB REPL / ROM 下载器]
+        USB[USB REPL / ROM bootloader]
         WiFi[Wi-Fi STA + AP]
         HTTP[HTTP API · 8000]
-        Shell[命令行 · 23]
-        Python[BPE / 采样 / SSE]
+        Shell[Shell · 23]
+        Python[BPE / sampling / SSE]
         Native[tinyllm_native.mpy · C Transformer]
-        RAM[PSRAM · 权重与 KV cache]
-        Flash[Flash · 固件 / 文件 / 模型]
+        RAM[PSRAM · weights and KV cache]
+        Flash[Flash · firmware / files / model]
         USB --> Flash
         WiFi --> HTTP
         WiFi --> Shell
@@ -48,30 +52,66 @@ flowchart LR
     Terminal -->|TCP| WiFi
 ```
 
-HTTP 服务在后台线程中串行处理请求；shell 在主线程运行，以支持中断用户 Python。推理与 shell 可同时使用。详细启动时序和内存布局见[架构文档](docs/architecture.md)。
+The HTTP service processes requests sequentially in a background thread. The shell runs on the main thread so user Python can be interrupted. Both remain available during inference. See [architecture](docs/architecture.md) for startup order and memory ownership.
 
-## 硬件与已验证版本
+## Hardware and verified versions
 
-| 项目 | 已验证配置 |
+| Component | Verified configuration |
 | --- | --- |
-| MCU | ESP32-S3 rev 0.2，240 MHz |
-| 存储 | 16 MB Flash，8 MB **Octal PSRAM** |
-| 开发主机 | macOS / Apple Silicon，USB 数据线 |
-| 固件 | MicroPython 1.29.0，`ESP32_GENERIC_S3-SPIRAM_OCT` |
-| Python | 3.11，依赖固定在 `requirements.txt` |
-| 构建工具 | Arduino CLI 1.5.1，ESP32 core 3.3.8，Xtensa GCC 14.2 / `esp-x32/2601` |
-| 原生模块 | `.mpy`，`ARCH=xtensawin`，`LINK_RUNTIME=1` |
-| 客户端 | 官方 OpenAI Python SDK 3.35.1 |
+| MCU | ESP32-S3 rev 0.2, 240 MHz |
+| Storage | 16 MB Flash, 8 MB **Octal PSRAM** |
+| Development host | macOS / Apple Silicon, USB data cable |
+| Firmware | MicroPython 1.29.0, `ESP32_GENERIC_S3-SPIRAM_OCT` |
+| Python | 3.11; dependencies pinned in `requirements.txt` |
+| Build tools | Arduino CLI 1.5.1, ESP32 core 3.3.8, Xtensa GCC 14.2 / `esp-x32/2601` |
+| Native module | `.mpy`, `ARCH=xtensawin`, `LINK_RUNTIME=1` |
+| Client | Official OpenAI Python SDK 3.35.1 |
 
-其他 ESP32 芯片、无 PSRAM 板卡、Quad PSRAM 固件和不同 MicroPython ABI 不在本项目的已验证范围内。首先确认实际硬件，不能仅依据商品名称选择固件。
+Other ESP32 chips, boards without PSRAM, Quad PSRAM firmware, and different MicroPython ABIs have not been verified by this project. Identify the actual hardware before choosing firmware.
 
-## 从零安装
+## Hardware shopping list
 
-以下命令在仓库根目录执行。已经装好的板子更新代码时，直接使用第 6 步的部署脚本；首次刷写固件才会擦除 Flash。
+Start with **one N16R8 board, one USB data cable, your existing Mac, and an existing 2.4 GHz Wi-Fi network**. No soldering or additional electronics are needed for the current service.
 
-### 1. 开发平台与 Python 环境
+| Item | Quantity | Model / specification | Purchase or reuse |
+| --- | --- | --- | --- |
+| Development board | 1 | Reference choice: **Waveshare ESP32-S3-DEV-KIT-N16R8**, SKU **28409**; **N16R8-M**, SKU **28836**, adds soldered headers. Module: **ESP32-S3-WROOM-1-N16R8**, 16 MB Flash / 8 MB Octal PSRAM, onboard antenna. | [International store](https://www.waveshare.com/product/mcu-tools/esp32-s3-dev-kit-n8r8.htm), select **1-N16R8**; [China store](https://dd.waveshare.net/shop/ESP32-S3-DEV-KIT-N16R8.htm); [manufacturer specifications](https://docs.waveshare.net/ESP32-S3-DEV-KIT-N8R8/) |
+| USB data cable | 1 | USB 2.0 data support; USB-C to USB-C for the example board and a USB-C Mac. Match connectors on other boards. | Reuse a working data cable. A documented example is [Apple 60W USB-C Charge Cable, 1 m](https://www.apple.com/shop/product/MW493AM/A/60w-usb-c-charge-cable-1-m); this project does not require 60W. |
+| Development computer | 1 existing | Apple Silicon Mac, Internet access for downloads, USB port | Reuse your Mac; no GPU is needed for on-board inference. |
+| Wi-Fi network | 1 existing for LAN mode | 2.4 GHz WPA2, device-to-device access enabled | Reuse your router. After installation, the ESP32 AP also provides direct access. |
+| USB power adapter | Optional, 1 | Regulated 5 V USB supply; 1 A or greater is a practical bare-board choice, subject to the board specification | Reuse a suitable phone supply for standalone use. Mac USB powers development. |
+| Data adapter / hub | Optional | Only if cable and Mac connectors differ | Reuse a data-capable USB adapter; start with a direct cable where possible. |
 
-安装 [Homebrew](https://brew.sh/) 后：
+The original board's chip and memory were verified, but its brand/PCB model was not recorded. The retail examples above are **specification matches, not separately tested units**. Product references were checked on 2026-10-21; confirm the selected SKU, current price, and availability before ordering.
+
+Choose a complete development board with USB and BOOT/RESET buttons. For the referenced WROOM-1 module, **N16R8** means 16 MB Flash plus 8 MB Octal PSRAM; **N16** alone has no PSRAM, and **N8R8** has only 8 MB Flash. Flash and PSRAM have different interfaces, so do not confuse Octal PSRAM with Octal Flash. See the [Espressif module table](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf).
+
+For shopping variants, native USB versus USB-UART, cable checks, and a checklist of expected results, follow the [hardware and first-connection guide](docs/hardware.md). The Waveshare example has one USB-C socket that can expose two serial devices; the guide explains which one to use.
+
+## Model choices and hardware limits
+
+Model capacity is constrained by **weight storage, available RAM, KV cache, memory bandwidth, and runtime compatibility**, not a universal parameter limit. The current 16 MB Flash / 8 MB PSRAM board has to fit firmware, networking, the shell, tokenizer, and inference buffers too. INT4 weights need at least `parameters / 2` bytes before scales and metadata; storing weights in Flash can save RAM but requires a suitable engine and partition layout.
+
+| Candidate | Format / approach | Status for this project | Model and runtime sources |
+| --- | --- | --- | --- |
+| TinyStories 260K | FP32, weights in RAM | Included and hardware-verified | [Weights](https://huggingface.co/karpathy/tinyllamas/tree/main/stories260K) · [Upstream C engine](https://github.com/doryiii/esp32-llm) |
+| TinyStories 3.3M | INT8 | Upstream ESP32-S3 result; needs an INT8 backend | [Weights and engine](https://github.com/doryiii/esp32-llm) |
+| Barista 8.9M | INT4 PLE, restricted espresso question answering | Upstream ESP32-S3 result; needs its own runtime and vocabulary mappings | [Weights](https://huggingface.co/slvDev/esp32-ai-barista) · [Engine](https://github.com/slvDev/esp32-ai) |
+| Stories15M / 15.2M | INT4, weights mapped from Flash | Upstream ESP32-S3 result; needs a port or replacement firmware | [Base weights](https://huggingface.co/karpathy/tinyllamas) · [NanoMind-S3](https://github.com/imFARSI/NanoMind-S3) |
+| esp32-ai TinyStories 28.9M | INT4 PLE, large lookup tables in Flash | Upstream ESP32-S3 result; needs a custom runtime and partition plan | [Weights](https://huggingface.co/slvDev/esp32-ai-tinystories) · [Engine](https://github.com/slvDev/esp32-ai) |
+| record42 / 30.72M | Vocabulary-trimmed Stories42M, INT4 | Upstream ESP32-S3 result; very tight Flash budget and replacement firmware | [Base weights](https://huggingface.co/karpathy/tinyllamas) · [esp32-30.7M](https://github.com/JARACH-209/esp32-30.7M) |
+
+Only the first row has been tested in this repository. The other rows are research candidates, not selectable API models. PLE parameter counts include large lookup tables and are not equivalent to the same number of dense Transformer parameters. Larger story models do not automatically gain chat or Chinese capabilities. The [bilingual model guide](docs/models.md) provides exact artifact sizes, RAM formulas, upstream benchmarks, pinned source revisions, and a migration checklist.
+
+## Install from scratch
+
+Open **Terminal** on the Mac (Spotlight → Terminal). Run command blocks in order; after cloning, keep the terminal in `esp32-llm-service`. Replace example ports, IP addresses, SSIDs, and keys with your own values. Commands use `.venv/bin/...` directly, so virtual-environment activation is unnecessary.
+
+For an already installed board, use the deployment script in step 6 to update code. Flash erasure is part of the initial firmware installation only.
+
+### 1. Development tools and Python environment
+
+After installing [Homebrew](https://brew.sh/):
 
 ```sh
 xcode-select --install
@@ -86,11 +126,11 @@ arduino-cli core update-index --additional-urls https://espressif.github.io/ardu
 arduino-cli core install esp32:esp32@3.3.8 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 ```
 
-Xcode 命令行工具已安装时，可跳过第一条。Arduino core 在这里提供 Xtensa 交叉编译器；板子运行的是 MicroPython。安装路径、代理和依赖用途见[环境准备](docs/setup.md)。
+Skip the first command if Xcode Command Line Tools are already installed. The Arduino core supplies the Xtensa cross compiler; the board runs MicroPython. See [setup](docs/setup.md) for paths, proxies, and dependency roles.
 
-### 2. 让 Codex 使用本地项目和 USB 工具
+### 2. Connect Codex to the local project and USB tools
 
-按照 [OpenAI Docs 的 Codex CLI 安装说明](https://learn.chatgpt.com/docs/codex/cli)安装并登录：
+Follow the [OpenAI Docs Codex CLI installation guide](https://learn.chatgpt.com/docs/codex/cli), then sign in:
 
 ```sh
 curl -fsSL https://chatgpt.com/codex/install.sh | sh
@@ -98,30 +138,30 @@ codex login
 codex -C "$PWD"
 ```
 
-Codex 在 Mac 的本地会话中读取仓库，调用 `.venv/bin/python`、`mpremote`、`esptool` 和构建脚本访问 USB。仓库内的 [AGENTS.md](AGENTS.md)说明硬件约束和验证方法。例如可以输入：
+A local Codex session on the Mac reads the repository and invokes `.venv/bin/python`, `mpremote`, `esptool`, and the build scripts to access USB. [AGENTS.md](AGENTS.md) records hardware constraints and verification procedures. For example:
 
-> 请阅读 README 和 AGENTS.md，检测本机 ESP32 USB 端口，核对芯片与 Flash/PSRAM 配置。先说明当前固件状态，再按安装文档准备依赖和部署。使用本机私有配置，完成后验证 health、OpenAI SDK 调用和重启恢复。
+> Read README and AGENTS.md. Detect the ESP32 USB port and confirm the chip, Flash, and PSRAM configuration. Describe the current firmware state, then prepare dependencies and deploy using the installation guide. Use the existing private local configuration. Verify health, an OpenAI SDK request, and restart recovery.
 
-Codex 登录账号与 ESP32 的本地 API Key 分别管理。本项目的 260K 模型用于端侧续写实验；它没有驱动 Codex 所需的 Responses 和工具调用能力。详见 [Codex 连接与开发流程](docs/codex.md)。
+Codex login and the ESP32 API key are separate credentials. The 260K model is an on-device continuation experiment and lacks the Responses API and tool calling needed to act as a Codex backend. See the [Codex development workflow](docs/codex.md).
 
-### 3. 下载固定版本资源、构建 C 模块
+### 3. Download pinned assets and build the C module
 
 ```sh
 .venv/bin/python scripts/prepare.py
 .venv/bin/python scripts/build_native.py
 ```
 
-`prepare.py` 下载固件、约 1 MB 模型权重、分词器及固定版本 MicroPython 源码，验证 SHA-256 / Git commit。构建输出为 `native/tinyllm_native.mpy`。源码、模型及固件版本分别记录于 [BUILD.md](BUILD.md)、[模型清单](models/manifest.json)和[固件清单](firmware/manifest.json)。
+`prepare.py` downloads firmware, approximately 1 MB of model weights, the tokenizer, and pinned MicroPython sources, checking SHA-256 hashes and the Git commit. The build produces `native/tinyllm_native.mpy`. Versions are recorded in [BUILD.md](BUILD.md), the [model manifest](models/manifest.json), and the [firmware manifest](firmware/manifest.json).
 
-### 4. 检测端口，备份并安装 MicroPython
+### 4. Find the port, back up, and install MicroPython
 
 ```sh
 .venv/bin/python -m serial.tools.list_ports -v
-export ESP32_PORT=/dev/cu.usbmodemXXXX   # 改成上一步查到的端口
+export ESP32_PORT=/dev/cu.usbmodemXXXX   # Replace with the detected port
 .venv/bin/python -m esptool --chip esp32s3 --port "$ESP32_PORT" flash-id
 ```
 
-确认是目标板及 16 MB Flash 后，执行首次安装。**擦除操作会删除板上现有固件和文件；先保留备份。**
+After confirming the target board and its 16 MB Flash, perform the initial installation. **Erasing deletes existing firmware and files; keep a backup first.**
 
 ```sh
 mkdir -p backups
@@ -132,49 +172,65 @@ shasum -a 256 backups/original.bin > backups/original.bin.sha256
 .venv/bin/python -m esptool --chip esp32s3 --port "$ESP32_PORT" --baud 921600 --after watchdog-reset write-flash 0 firmware/ESP32_GENERIC_S3-SPIRAM_OCT-20260824-v1.29.0.bin
 ```
 
-刷写后 USB 端口可能改变，需要重新列出并更新 `ESP32_PORT`。遇到连接失败时，按住 BOOT、点按 RESET、松开 BOOT，再检测端口。本次安装中 `watchdog-reset` 能可靠退出下载模式；旧固件的 USB 1200-baud touch 方法和恢复步骤见[安装文档](docs/installation.md)。
+The USB port may change after flashing; list ports again and update `ESP32_PORT`. If connection fails, hold BOOT, press and release RESET, then release BOOT. `watchdog-reset` reliably exited download mode on the verified board. See [installation](docs/installation.md) for recovery and the older firmware's optional USB 1200-baud touch method.
 
-### 5. 生成设备配置
+### 5. Generate device configuration
 
 ```sh
 .venv/bin/python scripts/configure.py --ssid 'YOUR_2.4G_WIFI'
 ```
 
-交互输入 Wi-Fi 密码，不回显。脚本生成随机热点密码、shell 密码和 API Key，并写入仅本机用户可读的两个文件：
+Enter the Wi-Fi password at the hidden prompt. The script generates random AP and shell passwords and an API key, then writes two files readable only by the local user:
 
-| 文件 | 用途 |
+| File | Purpose |
 | --- | --- |
-| `device/settings.json` | 部署到 ESP32 的 Wi-Fi、shell、HTTP 配置 |
-| `reports/access.json` | Mac 客户端使用的地址和登录凭据 |
+| `device/settings.json` | Wi-Fi, shell, and HTTP settings deployed to the ESP32 |
+| `reports/access.json` | Addresses and credentials used by Mac clients |
 
-两者均被 Git 忽略。再次运行配置生成器会拒绝覆盖现有凭据。新安装默认热点名为 `ESP32-LLM`，shell 用户名为 `esp32`，客户端地址先指向 `192.168.4.1`。字段说明见[安装文档](docs/installation.md#配置字段)。
+Both are ignored by Git. Running the generator again refuses to overwrite existing credentials. New installations default to AP name `ESP32-LLM`, shell user `esp32`, and client address `192.168.4.1`. See [configuration fields](docs/installation.md#configuration-fields).
 
-### 6. 部署与连接
+To view the generated credentials locally on macOS:
+
+```sh
+open -e reports/access.json
+```
+
+In that file, `ssid` / `wifi_password` are for joining the ESP32 AP, `user` / `password` are for shell login, and `api_key` is for HTTP requests. `sta_ssid` identifies the router network. Keep this file local.
+
+### 6. Deploy and connect
 
 ```sh
 .venv/bin/python scripts/deploy.py --port "$ESP32_PORT" --models --settings
 ```
 
-部署前检查本地文件；通过 USB 写入代码和模型，逐文件校验 SHA-256，相同文件跳过，最后设置 RTC 并重启。无需再次擦除 Flash。通常等待数秒，路由器不可达时 Wi-Fi 初始化最多等待约 20 秒。
+The script checks local files, transfers code and models over USB, verifies each file's SHA-256, skips unchanged content, sets the RTC, and restarts the board. No further Flash erasure is needed. Startup usually takes a few seconds; Wi-Fi initialization can wait about 20 seconds if the router is unavailable.
 
-两种访问方式：
+Choose either connection:
 
-- **局域网**：Mac 与 ESP32 连接可互通的网络。通过路由器 DHCP 列表、USB 启动日志或 shell `ifconfig` 查到板子的 IP。
-- **直连热点**：Mac 连接配置中的热点，使用 `reports/access.json` 中的热点密码，访问 `192.168.4.1`。热点不转发互联网。
+- **LAN:** Connect the Mac and ESP32 to a mutually reachable network. Find the board IP in the router's DHCP list, USB startup log, or shell `ifconfig` output.
+- **Direct AP:** Connect the Mac to the configured AP using the password in `reports/access.json`, then use `192.168.4.1`. The AP does not forward Internet traffic.
 
-把发现的 LAN IP 写入本机调用配置；此操作保留所有密码，且不修改板子：
+Save the discovered LAN IP in the local client configuration. This preserves credentials and does not modify the board:
 
 ```sh
-.venv/bin/python scripts/configure.py --host-only 192.168.1.50   # 换成实际 IP
+.venv/bin/python scripts/configure.py --host-only 192.168.1.50   # Replace with the actual IP
 .venv/bin/python scripts/chat.py 'Once upon a time' --tokens 64
 ./connect.command 192.168.1.50
 ```
 
-省略 `--port` 时，部署脚本仅在发现一个 Espressif USB 设备时自动选择。多人网络或 DHCP 租约变化时，地址可能改变。
+Without `--port`, deployment auto-selects a USB device only when exactly one Espressif device is present. DHCP lease changes can change the LAN address.
 
-## 调用接口
+### 7. Check the installation
 
-将下面 IP 和 Key 换成本机 `reports/access.json` 中的实际值。示例值无法鉴权。
+```sh
+.venv/bin/python scripts/check_llm.py
+```
+
+Run this after saving the reachable board IP in step 6. It exercises the API over the network using local credentials. Success should include an English continuation, working JSON/SSE calls, and shell access. The [checkpoint table](docs/hardware.md#installation-checkpoints) lists expected results for every installation stage. To run independently, move the USB cable to a suitable power adapter, allow startup, and verify the board at its current LAN IP or direct AP address.
+
+## Call the API
+
+Replace the IP and key below with values from your local `reports/access.json`. The placeholder key cannot authenticate.
 
 ```sh
 export ESP32_IP=192.168.1.50
@@ -193,46 +249,46 @@ curl --noproxy '*' "http://$ESP32_IP:8000/v1/chat/completions" \
   }'
 ```
 
-返回的续写示例：
+Example continuation:
 
 ```text
 , there was a little girl named Lily. She loved to play outside in the park. One day, she saw
 ```
 
-流式调用在请求中加入 `"stream": true`，curl 加 `-N`。完整 SSE、SDK、错误响应和参数范围见 [API 文档](docs/api.md)。本机代理应绕过 ESP32 局域网地址，提供的 Python 客户端已禁用环境代理。
+For streaming, add `"stream": true` to the request and `-N` to curl. See [API documentation](docs/api.md) for SSE, SDK calls, errors, and parameter bounds. Bypass host proxies for the ESP32 LAN address; the supplied Python client disables environment proxies.
 
-## 约束与实测
+## Service limits and measurements
 
-上下文总长 **512 token**，单次输出 **1–256 token**。每次 HTTP 请求按顺序处理，队列较短。聊天消息的纯文本内容以两个换行连接成提示词；角色没有聊天模型语义。多模态、工具、embeddings、Responses API、非零 penalties 和 logprobs 未实现。
+The context is **512 tokens total**, with **1–256 output tokens** per request. HTTP requests run sequentially with a short queue. Chat message text is joined with two newlines; roles have no chat-model semantics. Multimodal inputs, tools, embeddings, the Responses API, nonzero penalties, and logprobs are not implemented.
 
-| 实测项目 | 2026-10-21 结果 |
+| Measurement | Result on 2026-10-21 |
 | --- | --- |
-| 5 token 提示词、32 token 输出 | 板上 1.071 秒，约 29.88 token/s |
-| 首 token | 116 ms，板上计时 |
-| Mac HTTP 完整往返 | 约 1.70 秒 |
-| 128 token 输出 | 约 25.67 token/s |
-| OpenAI SDK / LAN 检查 | 34 项通过 |
-| 原 shell 检查 | 30 项通过 |
-| 与独立 C 参考实现对照 | 连续 32 token 完全一致；logits 最大绝对误差约 `8.45e-6` |
-| 重启恢复 | Wi-Fi、模型加载和 HTTP 服务已验证 |
+| 5-token prompt, 32-token output | 1.071 seconds on the board, about 29.88 tokens/s |
+| First token | 116 ms, measured on the board |
+| Full Mac HTTP round trip | About 1.70 seconds |
+| 128-token output | About 25.67 tokens/s |
+| OpenAI SDK / LAN checks | 34 passed |
+| Original shell checks | 30 passed |
+| Independent C reference comparison | All 32 tokens matched; maximum absolute logit error about `8.45e-6` |
+| Restart recovery | Wi-Fi, model loading, and HTTP startup verified |
 
-这是已完成的硬件测试记录，速度会受上下文长度和网络影响。[验证文档](docs/validation.md)提供方法和已脱敏的数据。仓库提供[主机 CI 模板](ci/host-checks.yml)，当前尚未自动启用；模板只执行主机检查，不声称测试了真实硬件。
+These are completed hardware measurements; context length and networking affect speed. [Validation](docs/validation.md) describes the methods and sanitized data. A [host CI template](ci/host-checks.yml) is provided but is not enabled automatically. It covers host checks, not physical hardware.
 
-## 项目结构与维护
+## Repository layout and maintenance
 
 ```text
-device/                 MicroPython 网络、shell、HTTP 和模型逻辑
-native/                 原生 C Transformer、动态模块入口和 Makefile
-scripts/                下载、配置、构建、部署、客户端和验证工具
-tests/                  独立 C 参考、固定输出样本、主机/板上测试
-models/manifest.json    模型来源、版本、大小与 SHA-256
-firmware/manifest.json  固件 URL、版本、源码 commit 与 SHA-256
-docs/                   环境、安装、架构、API、Codex、运维、验证
-ci/                     主机检查 CI 模板与启用说明
+device/                 MicroPython networking, shell, HTTP, and model logic
+native/                 C Transformer, dynamic module entry points, and Makefile
+scripts/                Download, configuration, build, deployment, clients, and checks
+tests/                  Independent C reference, fixtures, host and device tests
+models/manifest.json    Model sources, revision, sizes, and SHA-256 hashes
+firmware/manifest.json  Firmware URL, version, source commit, and SHA-256
+docs/                   Bilingual setup, installation, architecture, models, API, and operations
+ci/                     Host CI template and activation instructions
 ```
 
-日常更新：`.venv/bin/python scripts/deploy.py`，保留板上配置与用户文件。修改网络配置后才加 `--settings`；首次安装或修复权重时加 `--models`。执行 shell `passwd` 后应先同步板上配置，避免旧配置覆盖新密码。USB REPL 维护会中断服务，结束时需要重启。备份、恢复与排障见[维护文档](docs/operations.md)。
+For routine updates, run `.venv/bin/python scripts/deploy.py`; board configuration and user files are preserved. Add `--settings` after changing configuration and `--models` for initial installation or weight repair. After shell `passwd`, synchronize the board configuration before deploying settings again. USB REPL maintenance interrupts services; restart afterward. See [operations](docs/operations.md) for backups and troubleshooting.
 
-## 来源与许可证
+## Sources and licensing
 
-C 推理核心改编自 [doryiii/esp32-llm](https://github.com/doryiii/esp32-llm/tree/c6c647f7bfbb74efd2bbfd9a1725da4a903589f4) 和 [karpathy/llama2.c](https://github.com/karpathy/llama2.c)。固定源码与权重校验值可在清单中追溯。本项目采用 [MIT License](LICENSE)，上游文件保留各自声明；模型及工具链遵循其上游许可，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+The C inference core is adapted from [doryiii/esp32-llm](https://github.com/doryiii/esp32-llm/tree/c6c647f7bfbb74efd2bbfd9a1725da4a903589f4) and [karpathy/llama2.c](https://github.com/karpathy/llama2.c). Manifests record source revisions and asset hashes. This project uses the [MIT License](LICENSE); upstream files retain their notices. Model weights and toolchains retain their upstream terms. See [third-party notices](THIRD_PARTY_NOTICES.md).

@@ -1,10 +1,12 @@
-# 主机 CI 模板
+# Host CI template
 
-`host-checks.yml` 包含 Ubuntu / Python 3.11 的主机检查流程：安装依赖、语法检查、6 项配置与下载测试、文档与发布内容检查、下载模型并比对独立 C 参考结果。
+**English** | [简体中文](README.zh-CN.md)
 
-首次发布使用的 GitHub Personal Access Token 不含 `workflow` scope，GitHub 拒绝写入 `.github/workflows/`。因此工作流以模板形式保存在此目录，尚未自动启用。
+`host-checks.yml` defines an Ubuntu / Python 3.11 workflow: install dependencies, check syntax, run six configuration/download tests, check documentation and publication content, download the model, and compare the independent C reference result.
 
-要启用，可通过 GitHub 网页创建 `.github/workflows/ci.yml` 并复制本模板内容，或在具有工作流写入权限的本地环境执行：
+The GitHub Personal Access Token used for initial publication lacked the `workflow` scope, so GitHub rejected writes to `.github/workflows/`. The workflow is therefore stored here as a template and is not enabled automatically.
+
+To enable it, create `.github/workflows/ci.yml` through the GitHub website and paste the template, or use a local environment with workflow write permission:
 
 ```sh
 mkdir -p .github/workflows
@@ -14,4 +16,4 @@ git commit -m "Enable host validation workflow"
 git push
 ```
 
-工作流只申请仓库内容读取权限，不读取设备配置、不执行烧录，也不包含真实 ESP32 硬件测试。对应命令可以直接在本机执行，见 [BUILD.md](../BUILD.md)。
+The workflow requests only repository-content read access. It does not read device configuration, flash hardware, or test a physical ESP32. The same checks can run locally; see [BUILD.md](../BUILD.md).
